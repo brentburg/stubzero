@@ -7,6 +7,10 @@ import (
 
 type Matcher func(interface{}) bool
 
+var Any Matcher = func(_ interface{}) bool {
+	return true
+}
+
 func Match(v1, v2 interface{}) bool {
 	if reflect.TypeOf(v1) == reflect.TypeOf(Any) {
 		args := []reflect.Value{reflect.ValueOf(v2)}
@@ -15,11 +19,11 @@ func Match(v1, v2 interface{}) bool {
 	return reflect.DeepEqual(v1, v2)
 }
 
-var Any Matcher = func(_ interface{}) bool {
-	return true
-}
-
-func Regexp(re *regexp.Regexp) Matcher {
+func Regexp(exp interface{}) Matcher {
+	re, ok := exp.(*regexp.Regexp)
+	if !ok {
+		re = regexp.MustCompile(exp.(string))
+	}
 	return func(val interface{}) bool {
 		switch val := val.(type) {
 		case []byte:
@@ -32,30 +36,18 @@ func Regexp(re *regexp.Regexp) Matcher {
 	}
 }
 
-func Keys(m1 interface{}) Matcher {
-	t1 := reflect.TypeOf(m1)
-	if t1.Kind() != reflect.Map {
-		panic("Keys matcher must be called with a map")
-	}
-	v1 := reflect.ValueOf(m1)
-	return func(m2 interface{}) bool {
-		t2 := reflect.TypeOf(m2)
-		if t2.Kind() != reflect.Map {
+func Key(k, v interface{}) Matcher {
+	return func(m interface{}) bool {
+		t := reflect.TypeOf(m)
+		if t.Kind() != reflect.Map {
 			return false
 		}
-		v2 := reflect.ValueOf(m2)
-		for _, key := range v1.MapKeys() {
-			i1 := v1.MapIndex(key).Interface()
-			key2 := v2.MapIndex(key)
-			if !key2.IsValid() {
-				return false
-			}
-			i2 := key2.Interface()
-			if !Match(i1, i2) {
-				return false
-			}
+		mv := reflect.ValueOf(m)
+		mkv := mv.MapIndex(reflect.ValueOf(k))
+		if !mkv.IsValid() {
+			return false
 		}
-		return true
+		return Match(v, mkv.Interface())
 	}
 }
 
@@ -74,31 +66,18 @@ func Contains(v interface{}) Matcher {
 	}
 }
 
-func Fields(s1 interface{}) Matcher {
-	t1 := reflect.TypeOf(s1)
-	if t1.Kind() != reflect.Struct {
-		panic("Fields matcher must be called with a struct")
-	}
-	v1 := reflect.ValueOf(s1)
-	return func(s2 interface{}) bool {
-		t2 := reflect.TypeOf(s2)
-		if t2.Kind() != reflect.Struct {
+func Field(n string, v interface{}) Matcher {
+	return func(s interface{}) bool {
+		t := reflect.TypeOf(s)
+		if t.Kind() != reflect.Struct {
 			return false
 		}
-		v2 := reflect.ValueOf(s2)
-		for i := 0; i < t1.NumField(); i++ {
-			name := t1.Field(i).Name
-			_, hasName := t2.FieldByName(name)
-			if !hasName {
-				return false
-			}
-			i1 := v1.FieldByName(name).Interface()
-			i2 := v2.FieldByName(name).Interface()
-			if !Match(i1, i2) {
-				return false
-			}
+		sv := reflect.ValueOf(s)
+		_, hasName := t.FieldByName(n)
+		if !hasName {
+			return false
 		}
-		return true
+		return Match(v, sv.FieldByName(n).Interface())
 	}
 }
 
