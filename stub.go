@@ -26,7 +26,7 @@ func (s *Stub) Reset() {
 }
 
 func (s *Stub) Call(args ...interface{}) []interface{} {
-	s.calls.PushBack(newCall(args))
+	s.calls.PushBack(newCall(args...))
 	if s.returns.Len() > 0 {
 		return s.returns.Remove(s.returns.Front()).([]interface{})
 	}
@@ -66,7 +66,7 @@ func (s *Stub) NthCall(n int) *Call {
 		return nil
 	}
 	e := s.calls.Front()
-	for i := 1; i < n; n++ {
+	for i := 1; i < n; i++ {
 		e = e.Next()
 	}
 	return e.Value.(*Call)

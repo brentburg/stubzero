@@ -19,8 +19,8 @@ func newCall(args ...interface{}) *Call {
 }
 
 func (c *Call) CalledWith(args ...interface{}) bool {
-	for i, arg := range c.Args {
-		if !match.Match(arg, args[i]) {
+	for i, arg := range args {
+		if !match.Match(arg, c.Args[i]) {
 			return false
 		}
 	}
