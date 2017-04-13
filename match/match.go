@@ -8,23 +8,15 @@ import (
 type Matcher func(interface{}) bool
 
 func Match(v1, v2 interface{}) bool {
-	matcher, isMatcher := v1.(Matcher)
-	if isMatcher {
-		if !matcher(v2) {
-			return false
-		}
-	} else {
-		if !reflect.DeepEqual(v1, v2) {
-			return false
-		}
+	if reflect.TypeOf(v1) == reflect.TypeOf(Any) {
+		args := []reflect.Value{reflect.ValueOf(v2)}
+		return reflect.ValueOf(v1).Call(args)[0].Bool()
 	}
-	return true
+	return reflect.DeepEqual(v1, v2)
 }
 
-func Any() Matcher {
-	return func(_ interface{}) bool {
-		return true
-	}
+var Any Matcher = func(_ interface{}) bool {
+	return true
 }
 
 func Regexp(re *regexp.Regexp) Matcher {
@@ -40,24 +32,25 @@ func Regexp(re *regexp.Regexp) Matcher {
 	}
 }
 
-func Keys(m1 map[interface{}]interface{}) Matcher {
+func Keys(m1 interface{}) Matcher {
 	t1 := reflect.TypeOf(m1)
+	if t1.Kind() != reflect.Map {
+		panic("Keys matcher must be called with a map")
+	}
 	v1 := reflect.ValueOf(m1)
 	return func(m2 interface{}) bool {
 		t2 := reflect.TypeOf(m2)
 		if t2.Kind() != reflect.Map {
 			return false
 		}
-		keyT := t1.Key()
-		valT := t1.Elem()
-		isMatcher := reflect.TypeOf(Any()) == valT
-		if t2.Key() != keyT || (!isMatcher && t2.Elem() != valT) {
-			return false
-		}
 		v2 := reflect.ValueOf(m2)
 		for _, key := range v1.MapKeys() {
 			i1 := v1.MapIndex(key).Interface()
-			i2 := v2.MapIndex(key).Interface()
+			key2 := v2.MapIndex(key)
+			if !key2.IsValid() {
+				return false
+			}
+			i2 := key2.Interface()
 			if !Match(i1, i2) {
 				return false
 			}
@@ -71,8 +64,9 @@ func Contains(v interface{}) Matcher {
 		if reflect.TypeOf(s).Kind() != reflect.Slice {
 			return false
 		}
-		for _, sv := range s.([]interface{}) {
-			if Match(v, sv) {
+		sv := reflect.ValueOf(s)
+		for i := 0; i < sv.Len(); i++ {
+			if Match(v, sv.Index(i).Interface()) {
 				return true
 			}
 		}
@@ -106,4 +100,8 @@ func Fields(s1 interface{}) Matcher {
 		}
 		return true
 	}
+}
+
+func Custom(m func(interface{}) bool) Matcher {
+	return m
 }
