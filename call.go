@@ -19,15 +19,19 @@ func newCall(args ...interface{}) *Call {
 }
 
 func (c *Call) CalledWith(args ...interface{}) bool {
-	if len(args) != len(c.Args) {
-		return false
-	}
 	for i, arg := range c.Args {
 		if !match.Match(arg, args[i]) {
 			return false
 		}
 	}
 	return true
+}
+
+func (c *Call) CalledWithExactly(args ...interface{}) bool {
+	if len(args) != len(c.Args) {
+		return false
+	}
+	return c.CalledWith(args...)
 }
 
 func (c *Call) CalledBefore(d *Call) bool {

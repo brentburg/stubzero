@@ -102,6 +102,15 @@ func (s *Stub) CalledWith(args ...interface{}) bool {
 	return false
 }
 
+func (s *Stub) CalledWithExactly(args ...interface{}) bool {
+	for e := s.calls.Front(); e != nil; e = e.Next() {
+		if e.Value.(*Call).CalledWithExactly(args...) {
+			return true
+		}
+	}
+	return false
+}
+
 func (s *Stub) AlwaysCalledWith(args ...interface{}) bool {
 	for e := s.calls.Front(); e != nil; e = e.Next() {
 		if !e.Value.(*Call).CalledWith(args...) {
@@ -111,6 +120,19 @@ func (s *Stub) AlwaysCalledWith(args ...interface{}) bool {
 	return true
 }
 
+func (s *Stub) AlwaysCalledWithExactly(args ...interface{}) bool {
+	for e := s.calls.Front(); e != nil; e = e.Next() {
+		if !e.Value.(*Call).CalledWithExactly(args...) {
+			return false
+		}
+	}
+	return true
+}
+
 func (s *Stub) NeverCalledWith(args ...interface{}) bool {
 	return !s.CalledWith(args...)
+}
+
+func (s *Stub) NeverCalledWithExactly(args ...interface{}) bool {
+	return !s.CalledWithExactly(args...)
 }
